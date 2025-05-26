@@ -1,13 +1,21 @@
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import time
-import random
+import os
+
+# Import our custom modules
+from session_manager import SessionManager
+from llm_manager import LLMManager
 
 app = Flask(__name__)
 CORS(app, resources={
     r"/chat": {"origins": "*"},
     r"/health": {"origins": "*"}
 })
+
+# Initialize managers
+session_manager = SessionManager()
+llm_manager = LLMManager()
 
 @app.route('/')
 def home():
@@ -43,46 +51,53 @@ def chat():
         print(f"\n=== CHAT REQUEST ===")
         print(f"Message: {user_message}")
         print(f"Session ID: {session_id}")
-        print(f"Session Start: {session_start_time}")
-        print(f"Current Time: {current_time}")
         print(f"Conversation ID: {conversation_id}")
-        print(f"Conversation Start: {conversation_start_time}")
-        print(f"Message Timestamp: {message_timestamp}")
-        print(f"===================\n")
+        print(f"===================")
         
         if not user_message:
             return jsonify({'error': 'No message provided'}), 400
         
-        # Simulate some processing time
-        time.sleep(random.uniform(0.5, 2.0))
+        # Initialize session and conversation using session manager
+        session = session_manager.initialize_session(session_id, session_start_time)
+        conversation = session_manager.initialize_conversation(conversation_id, conversation_start_time, session_id)
         
-        # Generate a response (you can replace this with actual AI logic)
-        responses = [
-            f"That's an interesting point about '{user_message}'. Let me think about that...",
-            f"I understand you're asking about '{user_message}'. Here's what I think...",
-            f"Thanks for sharing that. Regarding '{user_message}', I'd say...",
-            f"That's a great question about '{user_message}'. In my experience...",
-            f"You mentioned '{user_message}' - that's quite thought-provoking.",
-            f"I see you're interested in '{user_message}'. Let me elaborate on that.",
-            f"Regarding '{user_message}', there are several aspects to consider...",
-            f"Your question about '{user_message}' touches on an important topic."
-        ]
+        # Get conversation history for context
+        conversation_messages = session_manager.get_conversation_messages(conversation_id, limit=10)
         
-        ai_response = random.choice(responses)
+        # Get AI response using LLM manager
+        llm_response = llm_manager.get_chat_response(
+            message=user_message,
+            conversation_messages=conversation_messages
+        )
         
-        print(f"Sending response: {ai_response}")
+        ai_response = llm_response['response']
+        provider_used = llm_response['provider']
+        
+        # Store the message and response in conversation history
+        session_manager.add_message_to_conversation(conversation_id, user_message, ai_response, session_id)
+        
+        print(f"LLM Response ({provider_used}): {ai_response[:100]}...")
+        print(f"Session stats: {session['message_count']} messages, {session['conversation_count']} conversations")
         
         response_data = {
             'response': ai_response,
             'timestamp': time.time(),
             'status': 'success',
+            'provider': provider_used,
             'session': {
                 'sessionId': session_id,
-                'acknowledged': True
+                'acknowledged': True,
+                'message_count': session['message_count'],
+                'conversation_count': session['conversation_count']
             },
             'conversation': {
                 'conversationId': conversation_id,
-                'acknowledged': True
+                'acknowledged': True,
+                'message_count': conversation['message_count']
+            },
+            'llm_info': {
+                'provider_used': provider_used,
+                'success': llm_response['success']
             }
         }
         
@@ -94,10 +109,45 @@ def chat():
         print(f"Error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/session/<session_id>', methods=['GET'])
+def get_session_info(session_id):
+    """Get session information and statistics"""
+    session = session_manager.get_session(session_id)
+    if session:
+        return jsonify(session)
+    else:
+        return jsonify({'error': 'Session not found'}), 404
+
+@app.route('/conversation/<conversation_id>', methods=['GET'])
+def get_conversation_history(conversation_id):
+    """Get full conversation history"""
+    conversation = session_manager.get_conversation(conversation_id)
+    if conversation:
+        return jsonify(conversation)
+    else:
+        return jsonify({'error': 'Conversation not found'}), 404
+
+@app.route('/cleanup', methods=['POST'])
+def cleanup_sessions():
+    """Manually trigger cleanup of old sessions"""
+    max_age = request.json.get('max_age_hours', 24) if request.json else 24
+    cleaned_count = session_manager.cleanup_old_sessions(max_age)
+    return jsonify({
+        'status': 'success',
+        'cleaned_sessions': cleaned_count,
+        'remaining_stats': session_manager.get_session_stats()
+    })
+
 @app.route('/health', methods=['GET'])
 def health_check():
-    """Simple health check endpoint"""
-    return jsonify({'status': 'healthy', 'timestamp': time.time()})
+    """Comprehensive health check endpoint"""
+    session_stats = session_manager.get_session_stats()
+    llm_providers = llm_manager.get_available_providers()
+    
+    return jsonify({
+        'status': 'healthy', 
+        'timestamp': time.time()
+    })
 
 if __name__ == '__main__':
     print("Starting Flask server on http://localhost:5500")

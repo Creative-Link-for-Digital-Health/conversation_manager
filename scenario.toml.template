@@ -14,7 +14,7 @@ name = "openai"
 secrets_key = "OPENAI"  # Key prefix in .secrets.toml
 model = "gpt-4"
 temperature = 0.7
-max_tokens = 1000
+max_tokens = 1000    # Current max for most models is 4096
 description = "OpenAI's GPT-4 model"
 
 [system_prompt]
