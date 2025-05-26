@@ -13,7 +13,7 @@ class SessionManager:
     """
     
     def __init__(self):
-        # In-memory storage for demo purposes
+        # In-memory storage for demo purposes TODO change me to REDIS implementation!!!
         self.sessions: Dict[str, dict] = {}
         self.conversations: Dict[str, dict] = {}
     

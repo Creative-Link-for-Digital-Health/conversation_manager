@@ -15,7 +15,7 @@ CORS(app, resources={
 
 # Initialize managers
 session_manager = SessionManager()
-llm_manager = LLMManager()
+llm_manager = LLMManager("./.secrets.toml", "./scenario.toml")
 
 @app.route('/')
 def home():
@@ -94,19 +94,24 @@ def chat():
                 'conversationId': conversation_id,
                 'acknowledged': True,
                 'message_count': conversation['message_count']
-            },
-            'llm_info': {
-                'provider_used': provider_used,
-                'success': llm_response['success']
             }
         }
         
+        print("About to jsonify response...")
         response = jsonify(response_data)
+        
+        print("About to add headers...")
         response.headers.add('Access-Control-Allow-Origin', '*')
+        
+        print("About to return response...")
         return response
         
     except Exception as e:
-        print(f"Error: {str(e)}")
+        print(f"ERROR TYPE: {type(e).__name__}")
+        print(f"ERROR MESSAGE: {str(e)}")
+        print(f"ERROR TRACEBACK:")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/session/<session_id>', methods=['GET'])
