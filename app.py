@@ -11,6 +11,10 @@ from llm_manager import LLMManager
 from loggers.local_logger import LocalLogger
 local_chat_logger = LocalLogger("./loggers/chat_logs.db")
 
+from loggers.redcap_logger import RedCAPLogger
+redcap_logger = RedCAPLogger("./.secrets.toml")
+
+
 app = Flask(__name__)
 CORS(app, resources={
     r"/chat": {"origins": "*"},
@@ -64,7 +68,14 @@ def chat():
             message=user_message,
             role='user'
         )
-        
+
+        redcap_logger.log_message(
+            session_id=session_id,
+            conversation_id=conversation_id,
+            message=user_message,
+            role='user'
+        )
+  
         if not user_message:
             return jsonify({'error': 'No message provided'}), 400
         
@@ -95,10 +106,17 @@ def chat():
         print(f"Bot Message: '{ai_response}' (type: {type(ai_response)})")
         
         local_chat_logger.log_message(
-            session_id =session_id,
+            session_id = session_id,
             conversation_id = conversation_id,
             message = ai_response,
-            role='agent'
+            role='assistant'
+        )
+
+        redcap_logger.log_message(
+            session_id = session_id,
+            conversation_id = conversation_id,
+            message = ai_response,
+            role='assistant'
         )
         
         response_data = {
