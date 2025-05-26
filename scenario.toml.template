@@ -5,8 +5,8 @@
 name = "Conversation Analysis Research"
 description = "Experimental setup for studying conversation patterns with AI assistants"
 version = "1.0.0"
-researcher = "Research Team"
 created_date = "2025-05-24"
+scenario_id = "150a8400-e39g-42d3-b7x6-q49653441020"
 
 [llm_provider]
 # Single LLM provider configuration
@@ -19,11 +19,7 @@ description = "OpenAI's GPT-4 model"
 
 [system_prompt]
 # Reference to prompt stored in prompt database
-prompt_uuid = "550e8400-e29b-41d4-a716-446655440000"
-# Fallback prompt if UUID not found or prompt tracker unavailable
-fallback_content = """You are a helpful AI assistant participating in a research study about conversation patterns. 
-Please respond naturally and helpfully to user queries. Your responses will be analyzed for research purposes.
-Be conversational, engaging, and provide thoughtful responses that encourage further dialogue."""
+prompt_id = "550e8400-e29b-41d4-a716-446655440000"
 
 [logging]
 # Conversation logging settings
@@ -34,7 +30,7 @@ include_timestamps = true
 include_provider_info = true
 include_system_prompt_uuid = true
 
-# REDCap integration (if available)
+# REDCap
 [logging.redcap]
 enabled = false
 api_url = "https://redcap.institution.edu/api/"
@@ -49,40 +45,6 @@ participant_id_field = "participant_id"
 consent_field = "consent_given"
 demographics_event = "participants_arm_1"
 
-# Conversation events
-conversation_start_event = "conversation_start_arm_1"
-messages_event = "messages_arm_1"
-conversation_end_event = "conversation_end_arm_1"
-
-# Custom field mappings (adjust based on your REDCap project)
-custom_fields = [
-    "study_condition",
-    "participant_group", 
-    "session_notes"
-]
-
-# Automatic data export settings
-[logging.redcap.export]
-auto_export_enabled = false
-export_interval_hours = 24
-export_format = "json"  # json, csv, xml
-include_rag_details = true
-anonymize_content = false  # Set to true to hash message content
-
-[experimental]
-# Research parameters
-max_conversation_length = 50  # Maximum messages per conversation
-auto_save_interval = 30  # Seconds between auto-saves
-session_timeout = 3600  # Session timeout in seconds
-random_seed = 42
-
-[ui]
-# Frontend customization
-theme = "default"
-show_provider_info = false  # Show which AI provider is being used
-show_timestamps = true
-enable_conversation_export = true
-max_conversations_displayed = 20
 
 [rag]
 # RAG (Retrieval Augmented Generation) configuration
@@ -90,44 +52,5 @@ enabled = false
 provider = "chroma"  # "chroma", "faiss", or "simple" (in-memory)
 embedding_model = "text-embedding-ada-002"
 embedding_provider = "openai"  # Use same provider as LLM for consistency
-chunk_size = 1000
-chunk_overlap = 200
-retrieval_k = 3  # Number of chunks to retrieve
-similarity_threshold = 0.7
-max_context_length = 4000  # Max tokens for retrieved context
 
 # Document processing
-[rag.documents]
-collection_name = "research_docs"  # Name for this scenario's document collection
-documents_path = "./documents"
-allowed_extensions = [".pdf", ".txt", ".md", ".docx"]
-auto_index = true  # Re-index on startup if documents changed
-recursive_scan = true  # Scan subdirectories
-
-# RAG prompt integration
-[rag.prompt]
-template_uuid = ""  # Optional: specific prompt template for RAG responses
-include_sources = true
-citation_style = "academic"  # "academic", "simple", or "none"
-context_prefix = "Based on the following relevant information:"
-no_context_message = "I don't have specific information about that in my knowledge base."
-
-# RAG research tracking
-[rag.tracking]
-log_retrievals = true
-log_chunk_scores = true
-log_source_documents = true
-track_citation_accuracy = false  # Advanced: track if AI actually uses retrieved info
-
-[research]
-# Research-specific settings
-participant_id_required = false
-consent_required = false
-post_conversation_survey = false
-data_retention_days = 365
-
-# Metadata to collect
-collect_response_times = true
-collect_message_lengths = true
-collect_conversation_topics = false
-collect_rag_metrics = true  # Track RAG retrieval effectiveness
