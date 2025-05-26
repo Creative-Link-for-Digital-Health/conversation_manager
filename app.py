@@ -7,6 +7,10 @@ import os
 from session_manager import SessionManager
 from llm_manager import LLMManager
 
+# Import loggers
+from loggers.local_logger import LocalLogger
+local_chat_logger = LocalLogger("./loggers/chat_logs.db")
+
 app = Flask(__name__)
 CORS(app, resources={
     r"/chat": {"origins": "*"},
@@ -53,6 +57,13 @@ def chat():
         print(f"Session ID: {session_id}")
         print(f"Conversation ID: {conversation_id}")
         print(f"===================")
+
+        local_chat_logger.log_message(
+            session_id=session_id,
+            conversation_id=conversation_id,
+            message=user_message,
+            role='user'
+        )
         
         if not user_message:
             return jsonify({'error': 'No message provided'}), 400
@@ -78,6 +89,17 @@ def chat():
         
         print(f"LLM Response ({provider_used}): {ai_response[:100]}...")
         print(f"Session stats: {session['message_count']} messages, {session['conversation_count']} conversations")
+
+        print(f"Session ID: '{session_id}' (type: {type(session_id)})")
+        print(f"Conversation ID: '{conversation_id}' (type: {type(conversation_id)})")
+        print(f"Bot Message: '{ai_response}' (type: {type(ai_response)})")
+        
+        local_chat_logger.log_message(
+            session_id =session_id,
+            conversation_id = conversation_id,
+            message = ai_response,
+            role='agent'
+        )
         
         response_data = {
             'response': ai_response,
