@@ -40,28 +40,29 @@ class SessionManager:
             print(f"Initialized new session: {session_id}")
         return self.sessions[session_id]
     
-    def initialize_conversation(self, conversation_id: str, conversation_start_time: str, session_id: str) -> dict:
+    def initialize_conversation(self, conversation_id: str, conversation_start_time: str, session_id: str, system_prompt: Optional[str] = None) -> dict:
         """
         Initialize a new conversation within a session.
-        
-        Args:
-            conversation_id: Unique identifier for the conversation
-            conversation_start_time: ISO timestamp when conversation started
-            session_id: Session this conversation belongs to
-            
-        Returns:
-            dict: Conversation data
         """
         if conversation_id not in self.conversations:
+            # Start with system message if provided
+            initial_messages = []
+            if system_prompt:
+                initial_messages.append({
+                    'role': 'system',
+                    'content': system_prompt,
+                    'timestamp': datetime.now().isoformat()
+                })
+            
             self.conversations[conversation_id] = {
                 'conversation_id': conversation_id,
                 'session_id': session_id,
                 'start_time': conversation_start_time,
                 'created_at': datetime.now().isoformat(),
-                'messages': [],
-                'message_count': 0
+                'messages': initial_messages,  # Start messages with a system prompt, if available
+                'message_count': len(initial_messages)
             }
-            
+                
             # Update session conversation count
             if session_id in self.sessions:
                 self.sessions[session_id]['conversation_count'] += 1
@@ -71,26 +72,28 @@ class SessionManager:
         return self.conversations[conversation_id]
     
     def add_message_to_conversation(self, conversation_id: str, message: str, response: str, session_id: str) -> None:
-        """
-        Add a message and response to the conversation history.
-        
-        Args:
-            conversation_id: Conversation to add message to
-            message: User's message
-            response: AI's response
-            session_id: Session this conversation belongs to
-        """
+        """Add a message and response to the conversation history."""
         if conversation_id in self.conversations:
+            # Add user message
             self.conversations[conversation_id]['messages'].append({
-                'timestamp': datetime.now().isoformat(),
-                'user_message': message,
-                'ai_response': response
+                'role': 'user',
+                'content': message,
+                'timestamp': datetime.now().isoformat()
             })
-            self.conversations[conversation_id]['message_count'] += 1
+            
+            # Add assistant response
+            self.conversations[conversation_id]['messages'].append({
+                'role': 'assistant', 
+                'content': response,
+                'timestamp': datetime.now().isoformat()
+            })
+            
+            self.conversations[conversation_id]['message_count'] += 2
             
             # Update session message count
             if session_id in self.sessions:
-                self.sessions[session_id]['message_count'] += 1
+                self.sessions[session_id]['message_count'] += 2
+
     
     def get_session(self, session_id: str) -> Optional[dict]:
         """

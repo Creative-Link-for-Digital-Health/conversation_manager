@@ -59,7 +59,7 @@ class LLMManager:
         )
         
         return response.choices[0].message.content
-    
+        
     def get_chat_response(self, message: str, conversation_messages: list = None, **kwargs) -> dict:
         """Get chat response with conversation context"""
         messages = []
@@ -67,8 +67,16 @@ class LLMManager:
         # Add conversation history
         if conversation_messages:
             for msg in conversation_messages:
-                messages.append({"role": "user", "content": msg['user_message']})
-                messages.append({"role": "assistant", "content": msg['ai_response']})
+                # Handle the new format with 'role' and 'content'
+                if 'role' in msg and 'content' in msg:
+                    messages.append({
+                        "role": msg['role'], 
+                        "content": msg['content']
+                    })
+                # Keep backward compatibility with old format
+                elif 'user_message' in msg and 'ai_response' in msg:
+                    messages.append({"role": "user", "content": msg['user_message']})
+                    messages.append({"role": "assistant", "content": msg['ai_response']})
         
         # Add current message
         messages.append({"role": "user", "content": message})
@@ -83,25 +91,3 @@ class LLMManager:
             'response': response.choices[0].message.content,
             'provider': 'openai_compatible'
         }
-
-# # Usage example:
-# if __name__ == "__main__":
-#     llm = LLMManager("../.secrets.toml", "../scenario.toml")
-    
-#     # Simple completion
-#     result = llm.get_completion("Hello, how are you?")
-#     print(result)
-    
-#     # Chat with conversation history
-#     conversation_messages = [
-#         {"user_message": "My name is John", "ai_response": "Nice to meet you, John!"},
-#         {"user_message": "What's my favorite color?", "ai_response": "I don't know your favorite color yet."}
-#     ]
-    
-#     chat_result = llm.get_chat_response(
-#         message="What's my name?",
-#         conversation_messages=conversation_messages
-#     )
-    
-#     print(f"Response: {chat_result['response']}")
-#     print(f"Provider: {chat_result['provider']}")

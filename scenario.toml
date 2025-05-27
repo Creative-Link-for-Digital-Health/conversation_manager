@@ -1,7 +1,7 @@
 # Research Scenario Configuration
 # This file defines the experimental setup for this research session
 
-[scenario]
+[info]
 name = "Conversation Analysis Research"
 description = "Experimental setup for studying conversation patterns with AI assistants"
 version = "1.0.0"
@@ -10,18 +10,18 @@ scenario_id = "150a8400-e39g-42d3-b7x6-q49653441020"
 
 [llm_provider]
 # Single LLM provider configuration
-name = "OPENAI"
+name = "OPENROUTER"
 # API key in .secrets.toml file
-#model = "meta-llama/llama-4-scout:free"
+model = "meta-llama/llama-4-scout:free"
 #model = "superdrew100/llama3-abliterated"
-model = "o3-mini"
+#model = "o3-mini"
 temperature = 0.7
 max_tokens = 1000    # Current max for most models is 4096
 description = "The model I picked"
 
 [system_prompt]
 # Reference to prompt stored in prompt database
-prompt_id = "550e8400-e29b-41d4-a716-446655440000"
+prompt_id = "05f89e7e-097b-469a-a9bf-34229c763965"
 
 [logging]
 # Conversation logging settings

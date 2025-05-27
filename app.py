@@ -14,16 +14,21 @@ local_chat_logger = LocalLogger("./loggers/chat_logs.db")
 from loggers.redcap_logger import RedCAPLogger
 redcap_logger = RedCAPLogger("./.secrets.toml")
 
+from prompts.prompt_utils import PromptLibrary
+prompt_library = PromptLibrary( "./scenario.toml", "./prompts/prompts.db")
+system_prompt = prompt_library.checkout()
+print(f"""SYSTEM_PROMPT: {system_prompt}""")
+
+# Initialize managers
+session_manager = SessionManager()
+llm_manager = LLMManager("./.secrets.toml", "./scenario.toml")
+
 
 app = Flask(__name__)
 CORS(app, resources={
     r"/chat": {"origins": "*"},
     r"/health": {"origins": "*"}
 })
-
-# Initialize managers
-session_manager = SessionManager()
-llm_manager = LLMManager("./.secrets.toml", "./scenario.toml")
 
 @app.route('/')
 def home():
@@ -81,7 +86,12 @@ def chat():
         
         # Initialize session and conversation using session manager
         session = session_manager.initialize_session(session_id, session_start_time)
-        conversation = session_manager.initialize_conversation(conversation_id, conversation_start_time, session_id)
+        conversation = session_manager.initialize_conversation(
+            conversation_id, 
+            conversation_start_time, 
+            session_id,
+            system_prompt=system_prompt
+        )
         
         # Get conversation history for context
         conversation_messages = session_manager.get_conversation_messages(conversation_id, limit=10)
