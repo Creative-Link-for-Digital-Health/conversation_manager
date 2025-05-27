@@ -21,7 +21,7 @@ description = "The model I picked"
 
 [system_prompt]
 # Reference to prompt stored in prompt database
-prompt_id = "c49570c3-a3e5-4fa1-8fd3-f6525b4e22a2"
+prompt_id = "0e68da7e-5739-498b-805a-78af8a187603"
 
 [logging]
 # Conversation logging settings
