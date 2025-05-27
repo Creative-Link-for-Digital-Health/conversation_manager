@@ -18,6 +18,15 @@ if uploaded_file is not None:
     # Load data
     df = pd.read_csv(uploaded_file)
     
+    # Filter out empty rows - rows where all values are NaN or empty strings
+    initial_rows = len(df)
+    df = df.dropna(how='all')  # Remove rows where all columns are NaN
+    df = df[~df.astype(str).apply(lambda x: x.str.strip().eq('')).all(axis=1)]  # Remove rows where all columns are empty strings
+    df = df.reset_index(drop=True)  # Reset index after filtering
+    
+    rows_removed = initial_rows - len(df)
+
+    
     # Sidebar for controls
     st.sidebar.header("🎛️ Data Controls")
     
@@ -138,6 +147,7 @@ else:
     st.subheader("What this app can do:")
     st.markdown("""
     - 📁 **Upload CSV files** and instantly explore them
+    - 🧹 **Automatically removes empty rows** to prevent crashes
     - 🔍 **Filter data** by any column (text search, dropdowns, sliders)
     - 📈 **View statistics** and summaries
     - 📥 **Download filtered data** as new CSV files

@@ -20,10 +20,15 @@ def load_api_params(secrets_path: str, scenario_path: str) -> Dict[str, str]:
             secrets = tomllib.load(f)
         with open(scenario_path, 'rb') as f:
             scenario = tomllib.load(f)
+
+        provider = scenario['llm_provider']['name']
+        model = scenario['llm_provider']['model']
+        print(f"""PROVIDER: {provider} MODEL: {model}""")
+
         return {
-            'API_KEY': secrets['OPENROUTER']['API_KEY'],
-            'API_URL': secrets['OPENROUTER']['API_URL'],
-            'MODEL': scenario['llm_provider']['model'],
+            'API_KEY': secrets[provider]['API_KEY'],
+            'API_URL': secrets[provider]['API_URL'],
+            'MODEL': model,
         }
     except Exception as e:
         print(f"Error loading API parameters: {e}", file=sys.stderr)
