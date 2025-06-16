@@ -64,6 +64,9 @@ dependencies:
     # Additional pip-only packages
     - python-multipart>=0.0.6  # For file uploads in FastAPI/Flask
     
+    # Session Data Management
+    - redis>=5.0.0  # For session management and caching
+
     # Optional: OCR capabilities
     # - pytesseract>=0.3.0
     
