@@ -35,9 +35,6 @@ include_system_prompt_uuid = true
 # REDCap
 [logging.redcap]
 enabled = false
-api_url = "https://redcap.institution.edu/api/"
-project_id = "12345"
-instrument_name = "conversation_data"
 # API token should be stored in .secrets.toml under [REDCAP] section
 
 # REDCap data structure configuration

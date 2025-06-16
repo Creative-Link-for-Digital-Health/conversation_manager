@@ -3,6 +3,7 @@ from flask_cors import CORS
 import time
 import os
 
+print("Starting Flask server...")
 # Import our custom modules
 from session_manager import SessionManager
 from llm_manager import LLMManager
@@ -163,46 +164,57 @@ def chat():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
-
-@app.route('/session/<session_id>', methods=['GET'])
-def get_session_info(session_id):
-    """Get session information and statistics"""
-    session = session_manager.get_session(session_id)
-    if session:
-        return jsonify(session)
-    else:
-        return jsonify({'error': 'Session not found'}), 404
-
-@app.route('/conversation/<conversation_id>', methods=['GET'])
-def get_conversation_history(conversation_id):
-    """Get full conversation history"""
-    conversation = session_manager.get_conversation(conversation_id)
-    if conversation:
-        return jsonify(conversation)
-    else:
-        return jsonify({'error': 'Conversation not found'}), 404
-
-@app.route('/cleanup', methods=['POST'])
-def cleanup_sessions():
-    """Manually trigger cleanup of old sessions"""
-    max_age = request.json.get('max_age_hours', 24) if request.json else 24
-    cleaned_count = session_manager.cleanup_old_sessions(max_age)
-    return jsonify({
-        'status': 'success',
-        'cleaned_sessions': cleaned_count,
-        'remaining_stats': session_manager.get_session_stats()
-    })
-
+   
 @app.route('/health', methods=['GET'])
 def health_check():
     """Comprehensive health check endpoint"""
     session_stats = session_manager.get_session_stats()
-    llm_providers = llm_manager.get_available_providers()
     
     return jsonify({
         'status': 'healthy', 
         'timestamp': time.time()
     })
+
+@app.route('/debug/redis')
+def debug_redis():
+    if app.debug:  # Only in debug mode
+        contents = session_manager.debug_redis_contents(detailed=True)
+        return jsonify(contents)
+    else:
+        return "Debug mode only", 403
+    
+# Uncomment these routes if you want to enable session and conversation reporting features
+
+# @app.route('/session/<session_id>', methods=['GET'])
+# def get_session_info(session_id):
+#     """Get session information and statistics"""
+#     session = session_manager.get_session(session_id)
+#     if session:
+#         return jsonify(session)
+#     else:
+#         return jsonify({'error': 'Session not found'}), 404
+
+# @app.route('/conversation/<conversation_id>', methods=['GET'])
+# def get_conversation_history(conversation_id):
+#     """Get full conversation history"""
+#     conversation = session_manager.get_conversation(conversation_id)
+#     if conversation:
+#         return jsonify(conversation)
+#     else:
+#         return jsonify({'error': 'Conversation not found'}), 404
+
+# @app.route('/cleanup', methods=['POST'])
+# def cleanup_sessions():
+#     """Manually trigger cleanup of old sessions"""
+#     max_age = request.json.get('max_age_hours', 24) if request.json else 24
+#     cleaned_count = session_manager.cleanup_old_sessions(max_age)
+#     return jsonify({
+#         'status': 'success',
+#         'cleaned_sessions': cleaned_count,
+#         'remaining_stats': session_manager.get_session_stats()
+#     })
+
+
 
 if __name__ == '__main__':
     print("Starting Flask server on http://localhost:5500")
