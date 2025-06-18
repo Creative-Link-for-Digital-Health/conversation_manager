@@ -8,28 +8,28 @@ import duckdb
 from typing import Optional
 
 class PromptLibrary:
-    def __init__(self, config_path: str, db_path: str):
+    def __init__(self, prompt_id: str, db_path: str):
         """
         Create an interface to db file for prompt storage and tracking
         
         Args:
-            config_path: Path to TOML configuration file
+            prompt_id: UUID of the prompt to retrieve
             db_path: Path to prompts database
         """
-        self.config_path = config_path
+        self.prompt_uuid = prompt_id
         self.db_path = db_path
         
         if not os.path.exists(db_path):
             raise FileNotFoundError(f"Database file not found: {db_path}")
         
-        if not os.path.exists(config_path):
-            raise FileNotFoundError(f"Config file not found: {config_path}")
+        # if not os.path.exists(config_path):
+        #     raise FileNotFoundError(f"Config file not found: {config_path}")
         
         # Load config
-        with open(config_path, 'r') as f:
-            self.scenario = toml.load(f)
+        # with open(config_path, 'r') as f:
+        #     self.scenario = toml.load(f)
         
-        self.prompt_uuid = self.scenario['system_prompt']['prompt_id']
+        # self.prompt_uuid = self.scenario['system_prompt']['prompt_id']
     
     def checkout(self) -> Optional[str]:
         """

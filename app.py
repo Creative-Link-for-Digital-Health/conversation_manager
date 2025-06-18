@@ -2,27 +2,49 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import time
 import os
+import toml
+
 
 print("Starting Flask server...")
+
+# IMPORT SCENARIO STATE
+with open('./scenario.toml', 'r') as f:
+    scenario_settings = toml.load(f)
+# Check if scenario settings are loaded correctly
+if not scenario_settings:
+    raise ValueError("Failed to load scenario settings from scenario.toml")
+
 # Import our custom modules
 from session_manager import SessionManager
 from llm_manager import LLMManager
 
-# Import loggers
-from loggers.local_logger import LocalLogger
-local_chat_logger = LocalLogger("./loggers/chat_logs.db")
+# LOCAL LOGGING
+if scenario_settings['local_logging']['enabled'] == True:
+    print("Local logging is enabled.")
+    # Import loggers
+    from loggers.local_logger import LocalLogger
+    local_chat_logger = LocalLogger("./loggers/chat_logs.db")
+else:    
+    print("Local logging is disabled. No local logger will be used.")
 
-from loggers.redcap_logger import RedCAPLogger
-redcap_logger = RedCAPLogger("./.secrets.toml")
+# REDCAP LOGGING
+if scenario_settings['redcap_logging']['enabled'] == True:
+    print("REDCap logging is enabled.")
+    # Import loggers
+    from loggers.redcap_logger import RedCAPLogger
+    redcap_logger = RedCAPLogger("./.secrets.toml")
+else:
+    print("RedCAP logging is disabled. No RedCAP logger will be used.")
+
 
 from prompts.prompt_utils import PromptLibrary
-prompt_library = PromptLibrary( "./scenario.toml", "./prompts/prompts.db")
+prompt_library = PromptLibrary( scenario_settings['system_prompt']['prompt_id'], "./prompts/prompts.db")
 system_prompt = prompt_library.checkout()
-print(f"""SYSTEM_PROMPT: {system_prompt}""")
+# print(f"""SYSTEM_PROMPT: {system_prompt}""")
 
 # Initialize managers
 session_manager = SessionManager()
-llm_manager = LLMManager("./.secrets.toml", "./scenario.toml")
+llm_manager = LLMManager("./.secrets.toml", "./scenario.toml") #TODO rewrite to pass which LLM directly
 
 
 app = Flask(__name__)
@@ -33,6 +55,7 @@ CORS(app, resources={
 
 @app.route('/')
 def home():
+    """Render the main chat interface"""
     return render_template('index.html')
 
 @app.route('/chat', methods=['POST', 'OPTIONS'])
@@ -51,6 +74,7 @@ def chat():
         user_message = data.get('message', '')
         session_data = data.get('session', {})
         conversation_data = data.get('conversation', {})
+        prompt_id = data.get('prompt_id', None) # Optional prompt ID for specific prompts
         
         # Extract session information
         session_id = session_data.get('sessionId')
@@ -68,19 +92,20 @@ def chat():
         print(f"Conversation ID: {conversation_id}")
         print(f"===================")
 
-        local_chat_logger.log_message(
-            session_id=session_id,
-            conversation_id=conversation_id,
-            message=user_message,
-            role='user'
-        )
-
-        redcap_logger.log_message(
-            session_id=session_id,
-            conversation_id=conversation_id,
-            message=user_message,
-            role='user'
-        )
+        if scenario_settings['local_logging']['enabled'] == True:
+            local_chat_logger.log_message(
+                session_id=session_id,
+                conversation_id=conversation_id,
+                message=user_message,
+                role='user'
+            )
+        if scenario_settings['redcap_logging']['enabled'] == True:
+            redcap_logger.log_message(
+                session_id=session_id,
+                conversation_id=conversation_id,
+                message=user_message,
+                role='user'
+            )
   
         if not user_message:
             return jsonify({'error': 'No message provided'}), 400
@@ -116,19 +141,21 @@ def chat():
         print(f"Conversation ID: '{conversation_id}' (type: {type(conversation_id)})")
         print(f"Bot Message: '{ai_response}' (type: {type(ai_response)})")
         
-        local_chat_logger.log_message(
-            session_id = session_id,
-            conversation_id = conversation_id,
-            message = ai_response,
-            role='assistant'
-        )
+        if scenario_settings['local_logging']['enabled'] == True:
+            local_chat_logger.log_message(
+                session_id = session_id,
+                conversation_id = conversation_id,
+                message = ai_response,
+                role='assistant'
+            )
 
-        redcap_logger.log_message(
-            session_id = session_id,
-            conversation_id = conversation_id,
-            message = ai_response,
-            role='assistant'
-        )
+        if scenario_settings['redcap_logging']['enabled'] == True:
+            redcap_logger.log_message(
+                session_id = session_id,
+                conversation_id = conversation_id,
+                message = ai_response,
+                role='assistant'
+            )
         
         response_data = {
             'response': ai_response,

@@ -21,32 +21,22 @@ description = "The model I picked"
 
 [system_prompt]
 # Reference to prompt stored in prompt database
-prompt_id = "0e68da7e-5739-498b-805a-78af8a187603"
+prompt_id = "f1481049-3e06-4869-ac4c-9171b8d885d2"
 
-[logging]
-# Conversation logging settings
-enabled = false
+[local_logging]
+enabled = true
 save_to_file = true
 log_directory = "./conversation_logs"
 include_timestamps = true
 include_provider_info = true
 include_system_prompt_uuid = true
 
-# REDCap
-[logging.redcap]
-enabled = false
+[redcap_logging]
+enabled = true
 # API token should be stored in .secrets.toml under [REDCAP] section
 
-# REDCap data structure configuration
-[logging.redcap.fields]
-# Participant information
-participant_id_field = "participant_id"
-consent_field = "consent_given"
-demographics_event = "participants_arm_1"
-
-
 [rag]
-# RAG (Retrieval Augmented Generation) configuration
+# RAG (Retrieval Augmented Generation) configurations TODO
 enabled = false
 provider = "chroma"  # "chroma", "faiss", or "simple" (in-memory)
 embedding_model = "text-embedding-ada-002"
