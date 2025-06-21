@@ -1,11 +1,16 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session, redirect
 from flask_cors import CORS
+from functools import wraps
 import time
 import os
 import toml
-
+import uuid
 
 print("Starting Flask server...")
+
+# LOAD SECRETS
+with open('./.secrets.toml', 'r') as f:
+    secrets = toml.load(f)
 
 # IMPORT SCENARIO STATE
 with open('./scenario.toml', 'r') as f:
@@ -36,27 +41,192 @@ if scenario_settings['redcap_logging']['enabled'] == True:
 else:
     print("RedCAP logging is disabled. No RedCAP logger will be used.")
 
-
 from prompts.prompt_utils import PromptLibrary
-prompt_library = PromptLibrary( scenario_settings['system_prompt']['prompt_id'], "./prompts/prompts.db")
-system_prompt = prompt_library.checkout()
-# print(f"""SYSTEM_PROMPT: {system_prompt}""")
+# load default scenario settings prompt
+try:
+    prompt_library = PromptLibrary(scenario_settings['system_prompt']['prompt_id'], "./prompts/prompts.db")
+    default_system_prompt = prompt_library.checkout()
+    
+    if not default_system_prompt:
+        print("Warning: Could not load default system prompt, using fallback")
+        default_system_prompt = "You are a helpful AI assistant."
+except Exception as e:
+    print(f"Error loading default system prompt: {e}")
+    default_system_prompt = "You are a helpful AI assistant."
 
 # Initialize managers
 session_manager = SessionManager()
 llm_manager = LLMManager("./.secrets.toml", "./scenario.toml") #TODO rewrite to pass which LLM directly
 
-
 app = Flask(__name__)
+
+# Set flask secret key from secrets file
+app.secret_key = secrets['INSTANCE_VARS']['flask_secret_key']
+# Check if secret key is set
+if not app.secret_key:
+    raise ValueError("Flask secret key not configured in .secrets.toml")
+
 CORS(app, resources={
     r"/chat": {"origins": "*"},
-    r"/health": {"origins": "*"}
+    r"/health": {"origins": "*"},
+    r"/api/*": {"origins": "*"}
 })
+
+# API Key decorator for protected routes
+def require_api_key(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+        expected_api_key = secrets['INSTANCE_VARS']['api_key']
+        
+        if not expected_api_key:
+            return jsonify({'error': 'API key not configured on server'}), 500
+        
+        if not api_key:
+            return jsonify({'error': 'API key required'}), 401
+        
+        if api_key != expected_api_key:
+            return jsonify({'error': 'Invalid API key'}), 403
+        
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route('/')
 def home():
-    """Render the main chat interface"""
+    """Render the main chat interface + option to load a new prompt"""
+    
+    prompt_id = request.args.get('prompt_id')
+
+    if prompt_id:
+        try:
+            # Load specific prompt if provided
+            prompt_library = PromptLibrary(prompt_id, "./prompts/prompts.db")
+            loaded_prompt = prompt_library.checkout()
+            
+            if loaded_prompt:
+                session['system_prompt'] = loaded_prompt
+                print(f"Loaded custom prompt: {prompt_id}")
+            else:
+                # Handle case where prompt wasn't found
+                print(f"Warning: Prompt {prompt_id} not found, using default")
+                session['system_prompt'] = default_system_prompt
+        except ValueError as e:
+            print(f"Invalid prompt ID format: {e}")
+            session['system_prompt'] = default_system_prompt
+        except Exception as e:
+            print(f"Error loading prompt: {e}")
+            session['system_prompt'] = default_system_prompt
+    else:
+        # Set default system prompt if none exists in session
+        if 'system_prompt' not in session:
+            session['system_prompt'] = default_system_prompt
+            
     return render_template('index.html')
+
+@app.route('/api/prompts', methods=['GET'])
+@require_api_key
+def list_prompts():
+    """List all available prompts"""
+    try:
+        prompts = PromptLibrary.list_all_prompts("./prompts/prompts.db")
+        return jsonify({
+            'status': 'success',
+            'prompts': prompts,
+            'count': len(prompts)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/prompts/<prompt_uuid>', methods=['GET'])
+@require_api_key
+def get_prompt(prompt_uuid):
+    """Get a specific prompt by UUID"""
+    try:
+        prompt_data = PromptLibrary.get_prompt_by_uuid("./prompts/prompts.db", prompt_uuid)
+        
+        if prompt_data:
+            return jsonify({
+                'status': 'success',
+                'prompt': prompt_data
+            })
+        else:
+            return jsonify({'error': 'Prompt not found'}), 404
+            
+    except ValueError as e:
+        return jsonify({'error': f'Invalid UUID format: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/prompts/<prompt_uuid>', methods=['PUT', 'POST'])
+@require_api_key
+def set_prompt(prompt_uuid):
+    """Create or update a prompt"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'JSON data required'}), 400
+        
+        title = data.get('title', '').strip()
+        description = data.get('description', '').strip()
+        content = data.get('content', '').strip()
+        
+        if not content:
+            return jsonify({'error': 'Content is required'}), 400
+        
+        if not title:
+            title = f"Prompt {prompt_uuid[:8]}"
+        
+        success = PromptLibrary.set_prompt(
+            "./prompts/prompts.db",
+            prompt_uuid,
+            title,
+            description,
+            content
+        )
+        
+        if success:
+            return jsonify({
+                'status': 'success',
+                'message': 'Prompt saved successfully',
+                'uuid': prompt_uuid
+            })
+        else:
+            return jsonify({'error': 'Failed to save prompt'}), 500
+            
+    except ValueError as e:
+        return jsonify({'error': f'Invalid UUID format: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/prompts/<prompt_uuid>', methods=['DELETE'])
+@require_api_key
+def delete_prompt(prompt_uuid):
+    """Delete a specific prompt"""
+    try:
+        success = PromptLibrary.delete_prompt("./prompts/prompts.db", prompt_uuid)
+        
+        if success:
+            return jsonify({
+                'status': 'success',
+                'message': 'Prompt deleted successfully'
+            })
+        else:
+            return jsonify({'error': 'Failed to delete prompt'}), 500
+            
+    except ValueError as e:
+        return jsonify({'error': f'Invalid UUID format: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/prompts/generate-uuid', methods=['GET'])
+@require_api_key
+def generate_uuid():
+    """Generate a new UUID for prompt creation"""
+    return jsonify({
+        'status': 'success',
+        'uuid': str(uuid.uuid4())
+    })
 
 @app.route('/chat', methods=['POST', 'OPTIONS'])
 def chat():
@@ -74,7 +244,7 @@ def chat():
         user_message = data.get('message', '')
         session_data = data.get('session', {})
         conversation_data = data.get('conversation', {})
-        prompt_id = data.get('prompt_id', None) # Optional prompt ID for specific prompts
+        # prompt_id = data.get('prompt_id', None) # Optional prompt ID for specific prompts
         
         # Extract session information
         session_id = session_data.get('sessionId')
@@ -110,8 +280,13 @@ def chat():
         if not user_message:
             return jsonify({'error': 'No message provided'}), 400
         
+        # Determine which system prompt to use
+        # Check Flask session first, then fall back to default
+        system_prompt = session.get('system_prompt', default_system_prompt)
+        
         # Initialize session and conversation using session manager
-        session = session_manager.initialize_session(session_id, session_start_time)
+        # Renamed to avoid conflict with Flask's session object
+        user_session = session_manager.initialize_session(session_id, session_start_time)
         conversation = session_manager.initialize_conversation(
             conversation_id, 
             conversation_start_time, 
@@ -135,7 +310,7 @@ def chat():
         session_manager.add_message_to_conversation(conversation_id, user_message, ai_response, session_id)
         
         print(f"LLM Response ({provider_used}): {ai_response[:100]}...")
-        print(f"Session stats: {session['message_count']} messages, {session['conversation_count']} conversations")
+        print(f"Session stats: {user_session['message_count']} messages, {user_session['conversation_count']} conversations")
 
         print(f"Session ID: '{session_id}' (type: {type(session_id)})")
         print(f"Conversation ID: '{conversation_id}' (type: {type(conversation_id)})")
@@ -143,17 +318,17 @@ def chat():
         
         if scenario_settings['local_logging']['enabled'] == True:
             local_chat_logger.log_message(
-                session_id = session_id,
-                conversation_id = conversation_id,
-                message = ai_response,
+                session_id=session_id,
+                conversation_id=conversation_id,
+                message=ai_response,
                 role='assistant'
             )
 
         if scenario_settings['redcap_logging']['enabled'] == True:
             redcap_logger.log_message(
-                session_id = session_id,
-                conversation_id = conversation_id,
-                message = ai_response,
+                session_id=session_id,
+                conversation_id=conversation_id,
+                message=ai_response,
                 role='assistant'
             )
         
@@ -165,8 +340,8 @@ def chat():
             'session': {
                 'sessionId': session_id,
                 'acknowledged': True,
-                'message_count': session['message_count'],
-                'conversation_count': session['conversation_count']
+                'message_count': user_session['message_count'],
+                'conversation_count': user_session['conversation_count']
             },
             'conversation': {
                 'conversationId': conversation_id,
@@ -202,6 +377,48 @@ def health_check():
         'timestamp': time.time()
     })
 
+@app.route('/manage-prompts', methods=['GET', 'POST'])
+def manage_prompts():
+    """Prompt management GUI with basic password protection"""
+    
+    # Handle login
+    if request.method == 'POST':
+        password = request.form.get('password')
+        expected_password = secrets['INSTANCE_VARS']['admin_password']
+        
+        if not expected_password:
+            return render_template('manage_prompts.html', error='Admin password not configured')
+        
+        if password == expected_password:
+            session['admin_authenticated'] = True
+            return redirect('/manage-prompts')
+        else:
+            return render_template('manage_prompts.html', error='Invalid password')
+    
+    # Check if already authenticated
+    if not session.get('admin_authenticated'):
+        return render_template('manage_prompts.html', show_login=True)
+    
+    # Load prompts for authenticated users
+    try:
+        prompts = PromptLibrary.list_all_prompts("./prompts/prompts.db")
+        api_key = secrets['INSTANCE_VARS']['api_key']  # Get API key from secrets
+        return render_template('manage_prompts.html', 
+                             prompts=prompts, 
+                             authenticated=True,
+                             api_key=api_key)  # Pass API key to template
+    except Exception as e:
+        return render_template('manage_prompts.html', 
+                             error=f'Error loading prompts: {str(e)}', 
+                             authenticated=True,
+                             api_key=secrets['INSTANCE_VARS'].get('api_key', ''))
+
+@app.route('/admin/logout', methods=['POST'])
+def admin_logout():
+    """Logout from admin interface"""
+    session.pop('admin_authenticated', None)
+    return redirect('/manage-prompts')
+
 @app.route('/debug/redis')
 def debug_redis():
     if app.debug:  # Only in debug mode
@@ -215,9 +432,9 @@ def debug_redis():
 # @app.route('/session/<session_id>', methods=['GET'])
 # def get_session_info(session_id):
 #     """Get session information and statistics"""
-#     session = session_manager.get_session(session_id)
-#     if session:
-#         return jsonify(session)
+#     user_session = session_manager.get_session(session_id)
+#     if user_session:
+#         return jsonify(user_session)
 #     else:
 #         return jsonify({'error': 'Session not found'}), 404
 
@@ -240,8 +457,6 @@ def debug_redis():
 #         'cleaned_sessions': cleaned_count,
 #         'remaining_stats': session_manager.get_session_stats()
 #     })
-
-
 
 if __name__ == '__main__':
     print("Starting Flask server on http://localhost:5500")

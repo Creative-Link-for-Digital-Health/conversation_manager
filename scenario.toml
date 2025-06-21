@@ -32,7 +32,7 @@ include_provider_info = true
 include_system_prompt_uuid = true
 
 [redcap_logging]
-enabled = true
+enabled = false
 # API token should be stored in .secrets.toml under [REDCAP] section
 
 [rag]

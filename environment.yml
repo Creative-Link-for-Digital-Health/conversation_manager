@@ -67,6 +67,8 @@ dependencies:
     # Session Data Management
     - redis>=5.0.0  # For session management and caching
 
+    # utilities
+    - uuid
     # Optional: OCR capabilities
     # - pytesseract>=0.3.0
     

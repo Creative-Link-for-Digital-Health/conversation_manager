@@ -27,6 +27,8 @@ Create your configuration files:
 cp scenario.toml.template scenario.toml
 
 # Copy and add your API secrets (DO NOT COMMIT THIS FILE!)
+# Make sure that this is not world readable on the server --> chmod 600 .secrets.toml
+# TODO more robust way of dealing with this in the future
 cp .secrets.toml.template .secrets.toml
 ```
 
@@ -37,6 +39,7 @@ Edit `scenario.toml`:
 - Configure LLM provider settings
 - Set system prompt UUID (after creating prompts)
 - Enable/configure RAG if needed
+- Enable/configure local logging if needed
 - Enable/configure REDCap logging if needed
 
 ### 3. Add API Keys
@@ -48,19 +51,7 @@ Edit `.secrets.toml` with your actual API keys:
 
 ### 4. Create Prompts and Document Collections
 
-```bash
-# Start the prompt management interface
-streamlit run prompt_tracker.py
-```
-
-- Create your system prompts
-
-```bash
-# Start the document management interface
-streamlit run document_tracker.py
-```
-- Set up document collections for RAG
-- Upload research documents
+TODO Create better documentation here
 
 ### 5. Start the Backend
 
@@ -72,49 +63,24 @@ python app.py
 The backend will:
 - ✅ Validate configuration
 - ✅ Initialize prompt management
-- ✅ Set up RAG system (if enabled)
+- FUTURE FEATURE: Set up RAG system (if enabled) 
 - ✅ Connect to REDCap (if enabled)
-- 🚀 Start API server on http://localhost:8000
+- 🚀 Start API server on http://localhost:5500
 
 ### 6. Test the System
 
 ```bash
 # Test API health
-curl http://localhost:8000/health
+curl http://localhost:5500/health
 
-# Test configuration
-curl http://localhost:8000/config
-
-# Test REDCap (if enabled)
-curl http://localhost:8000/redcap/test
-```
-
-## 📁 Project Structure
-
-TODO: Rewrite this!!!!
-
-```
-conversation-research/
-├── environment.yml              # Conda environment
-├── app.py                       # Flask backend
-├── prompt_tracker.py           # Streamlit interface
-├── scenario.toml               # Research scenario config
-├── .secrets.toml              # API keys (DO NOT COMMIT)
-├── vector_search.py           # RAG/document processing
-├── redcap_logger.py          # REDCap integration
-├── prompt_utils.py           # Prompt management
-├── prompts.db               # Prompt database
-├── chroma_db/              # Vector database (auto-created)
-├── documents/             # Document collections
-└── conversation_logs/     # Local conversation logs
 ```
 
 
 ## 📚 Additional Resources
 
 - [Conda User Guide](https://docs.conda.io/projects/conda/en/latest/user-guide/)
-- [Streamlit Documentation](https://docs.streamlit.io/)
 - [Flask Documentation](https://flask.palletsprojects.com/)
 - [REDCap API Documentation](https://redcap.vanderbilt.edu/api/help/)
 - [PyCap Documentation](https://redcap-tools.github.io/PyCap/)
 - [Docling Documentation](https://github.com/DS4SD/docling)
+- [Streamlit Documentation](https://docs.streamlit.io/)

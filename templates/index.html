@@ -380,7 +380,7 @@
     <div class="chat-main" id="chatMain">
         <div class="chat-header">
             <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
-            <div class="chat-title">AI Assistant</div>
+            <div class="chat-title" id="title">AI Assistant</div>
         </div>
         
         <div class="chat-messages" id="chatMessages">
@@ -738,6 +738,16 @@
         document.addEventListener('DOMContentLoaded', () => {
             chatInterface = new ChatInterface();
             console.log("Chat interface initialized");
+            // Check if title url encofing present
+            const titleElement = document.getElementById('title');
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('title')) {
+                const title = decodeURIComponent(urlParams.get('title'));
+                titleElement.textContent = title;
+            } else {
+                titleElement.textContent = 'AI Assistant';
+            }
+            console.log("Title set to:", titleElement.textContent);
         });
     </script>
 </body>

@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: #c82333;
+        }
+
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .login-container h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .error {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(220, 53, 69, 0.1);
+            border-radius: 4px;
+            border-left: 4px solid #dc3545;
+        }
+
+        .success {
+            color: #28a745;
+            font-size: 14px;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(40, 167, 69, 0.1);
+            border-radius: 4px;
+            border-left: 4px solid #28a745;
+        }
+
+        .prompts-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .prompts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .prompt-card {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 16px;
+            transition: all 0.2s;
+        }
+
+        .prompt-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+
+        .prompt-card h3 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .prompt-card .description {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .prompt-card .uuid {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            color: #999;
+            background: #f1f3f4;
+            padding: 4px 6px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .prompt-card .dates {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .prompt-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .prompt-actions .btn {
+            font-size: 12px;
+            padding: 6px 12px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            background: #667eea;
+            color: white;
+            padding: 16px 20px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .close {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            opacity: 0.7;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .prompts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    {% if show_login %}
+    <div class="login-container">
+        <h2>Admin Access Required</h2>
+        <form method="POST">
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn">Login</button>
+        </form>
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+    </div>
+    {% elif authenticated %}
+    <div class="container">
+        <div class="header">
+            <h1>Prompt Management</h1>
+            <form method="POST" action="/admin/logout" style="margin: 0;">
+                <button type="submit" class="logout-btn">Logout</button>
+            </form>
+        </div>
+
+        <div class="prompts-container">
+            <div class="controls">
+                <button class="btn btn-success" onclick="createPrompt()">+ New Prompt</button>
+                <button class="btn btn-secondary" onclick="refreshPrompts()">Refresh</button>
+            </div>
+
+            <div id="prompts-list">
+                {% if error %}
+                <div class="error">{{ error }}</div>
+                {% elif prompts %}
+                <div class="prompts-grid">
+                    {% for prompt in prompts %}
+                    <div class="prompt-card" data-uuid="{{ prompt.uuid }}">
+                        <h3>{{ prompt.title }}</h3>
+                        <div class="description">{{ prompt.description or 'No description' }}</div>
+                        <div class="uuid">{{ prompt.uuid }}</div>
+                        <div class="dates">
+                            Created: {{ prompt.created_at }}<br>
+                            Updated: {{ prompt.updated_at }}
+                        </div>
+                        <div class="prompt-actions">
+                            <button class="btn" onclick="editPrompt('{{ prompt.uuid }}')">Edit</button>
+                            <button class="btn btn-danger" onclick="deletePrompt('{{ prompt.uuid }}')">Delete</button>
+                            <button class="btn btn-secondary" onclick="usePrompt('{{ prompt.uuid }}','{{ prompt.title }}')">Use</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                    </svg>
+                    <p>No prompts found. Create your first prompt to get started!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit/Create Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Edit Prompt</h3>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="promptForm">
+                    <div class="form-group">
+                        <label for="promptTitle">Title:</label>
+                        <input type="text" id="promptTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="promptDescription">Description:</label>
+                        <input type="text" id="promptDescription">
+                    </div>
+                    <div class="form-group">
+                        <label for="promptContent">Content:</label>
+                        <textarea id="promptContent" required placeholder="Enter your prompt content here..."></textarea>
+                    </div>
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn btn-success">Save</button>
+                    </div>
+                </form>
+                <div id="modalMessage"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPromptUuid = null;
+        let isCreating = false;
+        
+        // Hardcoded API key for convenience (loaded from server)
+        const API_KEY = '{{ api_key }}'; // Flask will inject this
+
+        function showLoading() {
+            document.getElementById('prompts-list').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading...</p>
+                </div>
+            `;
+        }
+
+        function showMessage(message, isError = false) {
+            const messageDiv = document.getElementById('modalMessage');
+            messageDiv.innerHTML = `<div class="${isError ? 'error' : 'success'}">${message}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        async function createPrompt() {
+            // Generate new UUID
+            try {
+                const response = await fetch('/api/prompts/generate-uuid', {
+                    headers: {
+                        'X-API-Key': API_KEY
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'Failed to generate UUID');
+                }
+                
+                const data = await response.json();
+                currentPromptUuid = data.uuid;
+                isCreating = true;
+                
+                document.getElementById('modalTitle').textContent = 'Create New Prompt';
+                document.getElementById('promptTitle').value = '';
+                document.getElementById('promptDescription').value = '';
+                document.getElementById('promptContent').value = '';
+                document.getElementById('editModal').style.display = 'block';
+            } catch (error) {
+                console.error('Create prompt error:', error);
+                alert('Error generating UUID: ' + error.message);
+            }
+        }
+
+        async function editPrompt(uuid) {
+            currentPromptUuid = uuid;
+            isCreating = false;
+            
+            document.getElementById('modalTitle').textContent = 'Edit Prompt';
+            document.getElementById('editModal').style.display = 'block';
+            
+            try {
+                const response = await fetch(`/api/prompts/${uuid}`, {
+                    headers: {
+                        'X-API-Key': API_KEY
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('API Response:', data); // Debug log
+                
+                // Check if the response has the expected structure
+                if (!data || !data.prompt) {
+                    throw new Error('Invalid response format from server');
+                }
+                
+                const promptData = data.prompt;
+                
+                // Safely set form values with fallbacks
+                document.getElementById('promptTitle').value = promptData.title || '';
+                document.getElementById('promptDescription').value = promptData.description || '';
+                document.getElementById('promptContent').value = promptData.content || '';
+                
+            } catch (error) {
+                console.error('Edit prompt error:', error); // Debug log
+                showMessage('Error loading prompt: ' + error.message, true);
+            }
+        }
+
+        async function deletePrompt(uuid) {
+            if (!confirm('Are you sure you want to delete this prompt? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/prompts/${uuid}`, {
+                    method: 'DELETE',
+                    headers: { 'X-API-Key': API_KEY }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'Failed to delete prompt');
+                }
+                
+                // Remove the prompt card from the UI
+                const promptCard = document.querySelector(`[data-uuid="${uuid}"]`);
+                if (promptCard) {
+                    promptCard.remove();
+                }
+                
+                alert('Prompt deleted successfully!');
+                
+            } catch (error) {
+                console.error('Delete prompt error:', error);
+                alert('Error deleting prompt: ' + error.message);
+            }
+        }
+
+        function usePrompt(uuid, title) {
+            window.open(`/?prompt_id=${uuid}&title=${title}`, '_blank');
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+            currentPromptUuid = null;
+            document.getElementById('modalMessage').innerHTML = '';
+        }
+
+        async function refreshPrompts() {
+            showLoading();
+            window.location.reload();
+        }
+
+        // Form submission
+        document.getElementById('promptForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const title = document.getElementById('promptTitle').value.trim();
+            const description = document.getElementById('promptDescription').value.trim();
+            const content = document.getElementById('promptContent').value.trim();
+            
+            if (!title || !content) {
+                showMessage('Title and content are required', true);
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/prompts/${currentPromptUuid}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        description: description,
+                        content: content
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to save prompt');
+                }
+                
+                showMessage(isCreating ? 'Prompt created successfully!' : 'Prompt updated successfully!');
+                
+                setTimeout(() => {
+                    closeModal();
+                    refreshPrompts();
+                }, 1500);
+                
+            } catch (error) {
+                showMessage('Error saving prompt: ' + error.message, true);
+            }
+        });
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('editModal');
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+    {% else %}
+    <div class="container">
+        <div class="error">{{ error or 'Authentication error' }}</div>
+    </div>
+    {% endif %}
+</body>
+</html>
