@@ -4,6 +4,9 @@ app_OLD.py
 # API Keys and Secrets 
 .secrets.toml
 
+# Scenario Management 
+scenario.toml
+
 #Qodo
 .qodo
 
