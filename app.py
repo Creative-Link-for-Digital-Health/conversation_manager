@@ -262,8 +262,10 @@ def generate_uuid():
 
 @app.route('/chat', methods=['POST', 'OPTIONS'])
 def chat():
+
     # Handle preflight requests
     if request.method == 'OPTIONS':
+        print(f"OPTIONS request to /chat from {request.remote_addr}")
         response = jsonify({'status': 'ok'})
         response.headers.add('Access-Control-Allow-Origin', '*')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
@@ -271,8 +273,25 @@ def chat():
         return response
     
     try:
+        print(f"POST request to /chat from {request.remote_addr}")
+        # Log all request headers
+        print("Request headers:")
+        for header, value in request.headers.items():
+            print(f"  {header}: {value}")
+        
         # Get the data from the request
         data = request.get_json()
+        print(f"Request data: {data}")
+        
+        # Log content type
+        print(f"Request content type: {request.content_type}")
+        
+        # Check if data is None
+        if data is None:
+            print("Warning: request.get_json() returned None - might be invalid JSON or wrong content type")
+            return jsonify({'error': 'Invalid JSON or content type'}), 400
+        
+        print(f"Request data: {data}")
         user_message = data.get('message', '')
         session_data = data.get('session', {})
         conversation_data = data.get('conversation', {})
