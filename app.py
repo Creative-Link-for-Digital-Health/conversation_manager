@@ -32,14 +32,25 @@ if scenario_settings['local_logging']['enabled'] == True:
 else:    
     print("Local logging is disabled. No local logger will be used.")
 
+
 # REDCAP LOGGING
 if scenario_settings['redcap_logging']['enabled'] == True:
     print("REDCap logging is enabled.")
-    # Import loggers
-    from loggers.redcap_logger import RedCAPLogger
-    redcap_logger = RedCAPLogger("./.secrets.toml")
+    try:
+        # Import logger
+        from loggers.redcap_logger import RedCAPLogger
+        redcap_logger = RedCAPLogger("./.secrets.toml")
+        if not redcap_logger.enabled:
+            print("Warning: REDCap logger was initialized but is disabled due to errors")
+    except Exception as e:
+        print(f"ERROR setting up REDCap logging: {str(e)}")
+        print("Continuing without REDCap logging")
+        redcap_logger = None
 else:
-    print("RedCAP logging is disabled. No RedCAP logger will be used.")
+    print("REDCap logging is disabled. No REDCap logger will be used.")
+    redcap_logger = None
+
+
 
 from prompts.prompt_utils import PromptLibrary
 # load default scenario settings prompt
