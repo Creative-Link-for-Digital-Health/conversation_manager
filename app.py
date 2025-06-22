@@ -26,11 +26,32 @@ from llm_manager import LLMManager
 # LOCAL LOGGING
 if scenario_settings['local_logging']['enabled'] == True:
     print("Local logging is enabled.")
-    # Import loggers
-    from loggers.local_logger import LocalLogger
-    local_chat_logger = LocalLogger("./loggers/chat_logs.db")
+    try:
+        # Import loggers
+        from loggers.local_logger import LocalLogger
+        local_chat_logger = LocalLogger("./loggers/chat_logs.db")
+        print("Successfully initialized local logger")
+    except Exception as e:
+        print(f"Error initializing logger: {e}")
+        # Create a dummy logger that does nothing
+        class DummyLogger:
+            def log_message(self, *args, **kwargs):
+                print("DummyLogger: log_message called (no action taken)")
+            def log_conversation_turn(self, *args, **kwargs):
+                print("DummyLogger: log_conversation_turn called (no action taken)")
+            def get_conversation(self, *args, **kwargs):
+                return []
+            def get_session_conversations(self, *args, **kwargs):
+                return []
+            def export_to_csv(self, *args, **kwargs):
+                pass
+            def get_stats(self, *args, **kwargs):
+                return {"note": "Dummy logger - no actual data"}
+        local_chat_logger = DummyLogger()
+        print("Using fallback dummy logger")
 else:    
     print("Local logging is disabled. No local logger will be used.")
+
 
 
 # REDCAP LOGGING
