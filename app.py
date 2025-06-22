@@ -448,11 +448,15 @@ def health_check():
     print(f"Remote IP: {request.remote_addr}")
     print(f"User Agent: {request.headers.get('User-Agent', 'Not provided')}")
     
+    # Get system stats
     session_stats = session_manager.get_session_stats()
+    redis_health = session_manager.health_check() if hasattr(session_manager, 'health_check') else {'status': 'unknown'}
     
     response_data = {
         'status': 'healthy', 
-        'timestamp': time.time()
+        'timestamp': time.time(),
+        'session_stats': session_stats,
+        'redis': redis_health
     }
     
     print(f"Responding with: {response_data}")
