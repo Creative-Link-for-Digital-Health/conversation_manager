@@ -6,6 +6,9 @@ import sys
 from typing import Dict
 from openai import OpenAI
 
+import time
+from datetime import datetime
+
 # Use modern TOML library
 try:
     import tomllib  # Python 3.11+
@@ -60,34 +63,91 @@ class LLMManager:
         
         return response.choices[0].message.content
         
+    # def get_chat_response(self, message: str, conversation_messages: list = None, **kwargs) -> dict:
+    #     """Get chat response with conversation context"""
+    #     messages = []
+        
+    #     # Add conversation history
+    #     if conversation_messages:
+    #         for msg in conversation_messages:
+    #             # Handle the new format with 'role' and 'content'
+    #             if 'role' in msg and 'content' in msg:
+    #                 messages.append({
+    #                     "role": msg['role'], 
+    #                     "content": msg['content']
+    #                 })
+    #             # Keep backward compatibility with old format
+    #             elif 'user_message' in msg and 'ai_response' in msg:
+    #                 messages.append({"role": "user", "content": msg['user_message']})
+    #                 messages.append({"role": "assistant", "content": msg['ai_response']})
+        
+    #     # Add current message
+    #     messages.append({"role": "user", "content": message})
+        
+    #     response = self.client.chat.completions.create(
+    #         model=self.model,
+    #         messages=messages,
+    #         **kwargs
+    #     )
+        
+    #     return {
+    #         'response': response.choices[0].message.content,
+    #         'provider': 'openai_compatible'
+    #     }
+
+
+
     def get_chat_response(self, message: str, conversation_messages: list = None, **kwargs) -> dict:
         """Get chat response with conversation context"""
-        messages = []
+        print(f"LLM request started at {datetime.now().isoformat()}")
+        start_time = time.time()
         
-        # Add conversation history
-        if conversation_messages:
-            for msg in conversation_messages:
-                # Handle the new format with 'role' and 'content'
-                if 'role' in msg and 'content' in msg:
-                    messages.append({
-                        "role": msg['role'], 
-                        "content": msg['content']
-                    })
-                # Keep backward compatibility with old format
-                elif 'user_message' in msg and 'ai_response' in msg:
-                    messages.append({"role": "user", "content": msg['user_message']})
-                    messages.append({"role": "assistant", "content": msg['ai_response']})
+        # Set a default timeout if not provided
+        if 'timeout' not in kwargs:
+            kwargs['timeout'] = 30.0  # 30 second timeout
         
-        # Add current message
-        messages.append({"role": "user", "content": message})
-        
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            **kwargs
-        )
-        
-        return {
-            'response': response.choices[0].message.content,
-            'provider': 'openai_compatible'
-        }
+        try:
+            messages = []
+            
+            # Add conversation history
+            if conversation_messages:
+                for msg in conversation_messages:
+                    # Handle the new format with 'role' and 'content'
+                    if 'role' in msg and 'content' in msg:
+                        messages.append({
+                            "role": msg['role'], 
+                            "content": msg['content']
+                        })
+                    # Keep backward compatibility with old format
+                    elif 'user_message' in msg and 'ai_response' in msg:
+                        messages.append({"role": "user", "content": msg['user_message']})
+                        messages.append({"role": "assistant", "content": msg['ai_response']})
+            
+            # Add current message
+            messages.append({"role": "user", "content": message})
+            
+            print(f"Sending request to LLM API with {len(messages)} messages")
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                **kwargs
+            )
+            
+            response_time = time.time() - start_time
+            print(f"LLM request completed in {response_time:.2f} seconds")
+            
+            return {
+                'response': response.choices[0].message.content,
+                'provider': 'openai_compatible',
+                'response_time': response_time
+            }
+        except Exception as e:
+            response_time = time.time() - start_time
+            print(f"LLM request failed after {response_time:.2f} seconds: {str(e)}")
+            # Return a graceful error message
+            return {
+                'response': f"I'm sorry, I encountered a problem while processing your request. Please try again in a moment.",
+                'provider': 'error',
+                'error': str(e),
+                'response_time': response_time
+            }

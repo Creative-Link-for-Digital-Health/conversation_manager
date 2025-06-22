@@ -621,28 +621,49 @@
                     console.log('Sending message to:', this.apiEndpoint);
                     console.log('Request data:', requestData);
                     
-                    const response = await fetch(this.apiEndpoint, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(requestData)
-                    });
+                    // Use AbortController for timeout
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => {
+                        controller.abort();
+                        console.log('Request timed out after 30 seconds');
+                    }, 30000); // 30 second timeout
+                    
+                    try {
+                        const response = await fetch(this.apiEndpoint, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(requestData),
+                            signal: controller.signal
+                        });
+                        
+                        // Clear the timeout since we got a response
+                        clearTimeout(timeoutId);
+                        
+                        console.log('Response status:', response.status);
 
-                    console.log('Response status:', response.status);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        const data = await response.json();
+                        console.log('Response data:', data);
+                        return data.response;
+                    } catch (fetchError) {
+                        // Clear the timeout in case of error
+                        clearTimeout(timeoutId);
+                        throw fetchError;
                     }
-
-                    const data = await response.json();
-                    console.log('Response data:', data);
-                    return data.response;
                     
                 } catch (error) {
                     console.error('API call failed:', error);
                     // Fallback to mock response if API fails
                     console.log('Falling back to mock response');
+                    if (error.name === 'AbortError') {
+                        return "I'm sorry, but the request took too long and was automatically cancelled. Please try again with a shorter message or try later.";
+                    }
+                    
                     const fallbackResponses = [
                         `I'm having trouble connecting to the server, but here's my take on "${message}"...`,
                         `Server connection issue detected. Regarding "${message}", let me share my thoughts...`,
@@ -651,7 +672,6 @@
                     return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
                 }
             }
-            
             addMessage(text, sender) {
                 const messagesContainer = document.getElementById('chatMessages');
                 const messageDiv = document.createElement('div');

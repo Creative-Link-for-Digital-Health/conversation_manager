@@ -444,12 +444,72 @@ def chat():
 @app.route('/health', methods=['GET'])
 def health_check():
     """Comprehensive health check endpoint"""
+    print(f"\n=== HEALTH CHECK REQUEST at {datetime.now().isoformat()} ===")
+    print(f"Remote IP: {request.remote_addr}")
+    print(f"User Agent: {request.headers.get('User-Agent', 'Not provided')}")
+    
     session_stats = session_manager.get_session_stats()
     
-    return jsonify({
+    response_data = {
         'status': 'healthy', 
         'timestamp': time.time()
-    })
+    }
+    
+    print(f"Responding with: {response_data}")
+    print("=== END HEALTH CHECK ===\n")
+    
+    return jsonify(response_data)
+
+@app.route('/echo', methods=['POST', 'OPTIONS'])
+def echo():
+    """Echo endpoint for debugging"""
+    print(f"\n=== ECHO REQUEST at {datetime.now().isoformat()} ===")
+    print(f"Method: {request.method}")
+    print(f"Remote IP: {request.remote_addr}")
+    print(f"User Agent: {request.headers.get('User-Agent', 'Not provided')}")
+    
+    # Handle preflight requests
+    if request.method == 'OPTIONS':
+        print("Handling OPTIONS request (CORS preflight)")
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-Requested-With')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        response.headers.add('Access-Control-Max-Age', '3600')
+        return response
+    
+    # Log raw request data
+    try:
+        raw_body = request.get_data(as_text=True)
+        print(f"Raw request body: {raw_body}")
+    except Exception as e:
+        print(f"Error getting raw body: {e}")
+    
+    # Try to parse as JSON
+    try:
+        json_data = request.get_json(silent=True)
+        print(f"Parsed JSON: {json_data}")
+    except Exception as e:
+        print(f"Error parsing JSON: {e}")
+        json_data = None
+    
+    # Prepare response
+    response_data = {
+        'status': 'success',
+        'method': request.method,
+        'headers': dict(request.headers),
+        'raw_body': raw_body if 'raw_body' in locals() else None,
+        'json_data': json_data,
+        'timestamp': time.time()
+    }
+    
+    print(f"Responding with echo data")
+    print("=== END ECHO ===\n")
+    
+    response = jsonify(response_data)
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
+
 
 @app.route('/manage-prompts', methods=['GET', 'POST'])
 def manage_prompts():
