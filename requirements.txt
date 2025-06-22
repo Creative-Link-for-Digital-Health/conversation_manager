@@ -1,0 +1,37 @@
+# Core Flask Backend for Remote Deployment
+flask>=2.3.0
+flask-cors>=4.0.0
+requests>=2.31.0
+
+# Data and Configuration
+toml>=0.10.2
+pandas>=1.5.0
+numpy>=1.24.0
+
+# Database
+duckdb>=0.9.0
+
+# Vector Databases
+chromadb>=0.4.0
+
+# Machine Learning and AI
+openai>=1.0.0
+scikit-learn>=1.3.0
+
+# Utilities
+pathlib2
+python-dateutil
+pytz
+tqdm
+
+# REDCap Integration
+pycap>=2.5.0
+
+# Additional packages
+python-multipart>=0.0.6
+
+# Session Data Management
+redis>=5.0.0
+
+# Web Server (recommended for production)
+gunicorn>=21.0.0
