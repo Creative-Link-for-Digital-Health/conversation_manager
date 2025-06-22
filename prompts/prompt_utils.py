@@ -6,11 +6,13 @@ import os
 import toml
 import duckdb
 import uuid
+import threading
 from typing import Optional, List, Dict
 from functools import lru_cache
 
 class PromptLibrary:
     _cache = {}  # Simple in-memory cache
+    _lock = threading.Lock()  # Thread safety lock
     
     def __init__(self, prompt_id: str, db_path: str):
         """
@@ -44,7 +46,8 @@ class PromptLibrary:
             return self._cache[self.prompt_uuid]
         
         try:
-            with duckdb.connect(self.db_path) as conn:
+            # Use read_only=True for read operations
+            with duckdb.connect(self.db_path, read_only=True) as conn:
                 result = conn.execute("""
                     SELECT content FROM prompts 
                     WHERE uuid = ?
@@ -59,7 +62,7 @@ class PromptLibrary:
                     return None
                     
         except Exception as e:
-            print(f"Database error: {e}")
+            print(f"Database error in checkout: {e}")
             return None
     
     @staticmethod
@@ -77,7 +80,8 @@ class PromptLibrary:
             raise FileNotFoundError(f"Database file not found: {db_path}")
         
         try:
-            with duckdb.connect(db_path) as conn:
+            # Use read_only=True for read operations
+            with duckdb.connect(db_path, read_only=True) as conn:
                 results = conn.execute("""
                     SELECT uuid, title, description, created_at, updated_at
                     FROM prompts 
@@ -97,7 +101,7 @@ class PromptLibrary:
                 return prompts
                 
         except Exception as e:
-            print(f"Database error: {e}")
+            print(f"Database error in list_all_prompts: {e}")
             return []
     
     @staticmethod
@@ -122,7 +126,8 @@ class PromptLibrary:
             raise FileNotFoundError(f"Database file not found: {db_path}")
         
         try:
-            with duckdb.connect(db_path) as conn:
+            # Use read_only=True for read operations
+            with duckdb.connect(db_path, read_only=True) as conn:
                 result = conn.execute("""
                     SELECT uuid, title, description, content, created_at, updated_at
                     FROM prompts 
@@ -142,7 +147,7 @@ class PromptLibrary:
                     return None
                     
         except Exception as e:
-            print(f"Database error: {e}")
+            print(f"Database error in get_prompt_by_uuid: {e}")
             return None
     
     @staticmethod
@@ -170,25 +175,28 @@ class PromptLibrary:
             raise FileNotFoundError(f"Database file not found: {db_path}")
         
         try:
-            with duckdb.connect(db_path) as conn:
-                # Check if prompt exists
-                existing = conn.execute("""
-                    SELECT uuid FROM prompts WHERE uuid = ?
-                """, [prompt_uuid]).fetchone()
-                
-                if existing:
-                    # Update existing prompt
-                    conn.execute("""
-                        UPDATE prompts 
-                        SET title = ?, description = ?, content = ?, updated_at = CURRENT_TIMESTAMP
-                        WHERE uuid = ?
-                    """, [title, description, content, prompt_uuid])
-                else:
-                    # Insert new prompt
-                    conn.execute("""
-                        INSERT INTO prompts (uuid, title, description, content, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                    """, [prompt_uuid, title, description, content])
+            # For write operations, we need the lock for thread safety
+            with PromptLibrary._lock:
+                # For write operations, don't use read_only
+                with duckdb.connect(db_path) as conn:
+                    # Check if prompt exists
+                    existing = conn.execute("""
+                        SELECT uuid FROM prompts WHERE uuid = ?
+                    """, [prompt_uuid]).fetchone()
+                    
+                    if existing:
+                        # Update existing prompt
+                        conn.execute("""
+                            UPDATE prompts 
+                            SET title = ?, description = ?, content = ?, updated_at = CURRENT_TIMESTAMP
+                            WHERE uuid = ?
+                        """, [title, description, content, prompt_uuid])
+                    else:
+                        # Insert new prompt
+                        conn.execute("""
+                            INSERT INTO prompts (uuid, title, description, content, created_at, updated_at)
+                            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        """, [prompt_uuid, title, description, content])
                 
                 # Clear cache for this prompt
                 if prompt_uuid in PromptLibrary._cache:
@@ -197,7 +205,7 @@ class PromptLibrary:
                 return True
                 
         except Exception as e:
-            print(f"Database error: {e}")
+            print(f"Database error in set_prompt: {e}")
             return False
     
     @staticmethod
@@ -222,19 +230,22 @@ class PromptLibrary:
             raise FileNotFoundError(f"Database file not found: {db_path}")
         
         try:
-            with duckdb.connect(db_path) as conn:
-                # Check if prompt exists
-                existing = conn.execute("""
-                    SELECT uuid FROM prompts WHERE uuid = ?
-                """, [prompt_uuid]).fetchone()
-                
-                if not existing:
-                    return False  # Prompt doesn't exist
-                
-                # Delete the prompt
-                conn.execute("""
-                    DELETE FROM prompts WHERE uuid = ?
-                """, [prompt_uuid])
+            # For write operations, we need the lock for thread safety
+            with PromptLibrary._lock:
+                # For write operations, don't use read_only
+                with duckdb.connect(db_path) as conn:
+                    # Check if prompt exists
+                    existing = conn.execute("""
+                        SELECT uuid FROM prompts WHERE uuid = ?
+                    """, [prompt_uuid]).fetchone()
+                    
+                    if not existing:
+                        return False  # Prompt doesn't exist
+                    
+                    # Delete the prompt
+                    conn.execute("""
+                        DELETE FROM prompts WHERE uuid = ?
+                    """, [prompt_uuid])
                 
                 # Clear cache for this prompt
                 if prompt_uuid in PromptLibrary._cache:
@@ -243,10 +254,10 @@ class PromptLibrary:
                 return True
                 
         except Exception as e:
-            print(f"Database error: {e}")
+            print(f"Database error in delete_prompt: {e}")
             return False
 
-    @staticmethod
-    def clear_cache():
+    @classmethod
+    def clear_cache(cls):
         """Clear the prompt cache"""
-        PromptLibrary._cache.clear()
+        cls._cache.clear()
