@@ -1,3 +1,4 @@
+from datetime import datetime
 from flask import Flask, render_template, request, jsonify, session, redirect
 from flask_cors import CORS
 from functools import wraps
@@ -260,53 +261,74 @@ def generate_uuid():
         'uuid': str(uuid.uuid4())
     })
 
+
 @app.route('/chat', methods=['POST', 'OPTIONS'])
 def chat():
-
+    # Log request information
+    print("\n" + "="*50)
+    print(f"REQUEST TO /chat at {datetime.now().isoformat()}")
+    print(f"Method: {request.method}")
+    print(f"Remote IP: {request.remote_addr}")
+    print(f"User Agent: {request.headers.get('User-Agent', 'Not provided')}")
+    
+    # Log all headers
+    print("\nHeaders:")
+    for name, value in request.headers.items():
+        print(f"  {name}: {value}")
+    
+    # Log the raw request data
+    print("\nRaw Request Body:")
+    try:
+        raw_body = request.get_data(as_text=True)
+        print(raw_body)
+    except Exception as e:
+        print(f"Error getting raw body: {e}")
+    
     # Handle preflight requests
     if request.method == 'OPTIONS':
-        print(f"OPTIONS request to /chat from {request.remote_addr}")
+        print("Handling OPTIONS request (CORS preflight)")
         response = jsonify({'status': 'ok'})
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-        response.headers.add('Access-Control-Allow-Methods', 'POST')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-Requested-With')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        response.headers.add('Access-Control-Max-Age', '3600')
         return response
     
-    try:
-        print(f"POST request to /chat from {request.remote_addr}")
-        # Log all request headers
-        print("Request headers:")
-        for header, value in request.headers.items():
-            print(f"  {header}: {value}")
+    try:  # <-- Add this line to match the except at the end
+        # Attempt to parse JSON data
+        print("\nParsing JSON:")
+        try:
+            data = request.get_json(silent=True)
+            if data is None:
+                print("Warning: request.get_json() returned None")
+                # Try force parsing
+                try:
+                    data = request.get_json(force=True)
+                    print("Force parsing successful")
+                except Exception as e:
+                    print(f"Force parsing failed: {e}")
+                    return jsonify({'error': 'Invalid JSON data'}), 400
+            print(f"Parsed data: {data}")
+        except Exception as e:
+            print(f"JSON parsing error: {e}")
+            return jsonify({'error': f'Error parsing JSON: {str(e)}'}), 400
         
-        # Get the data from the request
-        data = request.get_json()
-        print(f"Request data: {data}")
-        
-        # Log content type
-        print(f"Request content type: {request.content_type}")
-        
-        # Check if data is None
-        if data is None:
-            print("Warning: request.get_json() returned None - might be invalid JSON or wrong content type")
-            return jsonify({'error': 'Invalid JSON or content type'}), 400
-        
-        print(f"Request data: {data}")
+
         user_message = data.get('message', '')
         session_data = data.get('session', {})
         conversation_data = data.get('conversation', {})
         # prompt_id = data.get('prompt_id', None) # Optional prompt ID for specific prompts
-        
+            
         # Extract session information
         session_id = session_data.get('sessionId')
         session_start_time = session_data.get('sessionStartTime')
         current_time = session_data.get('currentTime')
-        
+            
         # Extract conversation information
         conversation_id = conversation_data.get('conversationId')
         conversation_start_time = conversation_data.get('conversationStartTime')
         message_timestamp = conversation_data.get('messageTimestamp')
-        
+            
         print(f"\n=== CHAT REQUEST ===")
         print(f"Message: {user_message}")
         print(f"Session ID: {session_id}")
@@ -327,7 +349,7 @@ def chat():
                 message=user_message,
                 role='user'
             )
-  
+      
         if not user_message:
             return jsonify({'error': 'No message provided'}), 400
         
@@ -344,7 +366,7 @@ def chat():
             session_id,
             system_prompt=system_prompt
         )
-        
+            
         # Get conversation history for context
         conversation_messages = session_manager.get_conversation_messages(conversation_id, limit=10)
         
@@ -353,7 +375,7 @@ def chat():
             message=user_message,
             conversation_messages=conversation_messages
         )
-        
+            
         ai_response = llm_response['response']
         provider_used = llm_response['provider']
         
@@ -366,7 +388,7 @@ def chat():
         print(f"Session ID: '{session_id}' (type: {type(session_id)})")
         print(f"Conversation ID: '{conversation_id}' (type: {type(conversation_id)})")
         print(f"Bot Message: '{ai_response}' (type: {type(ai_response)})")
-        
+            
         if scenario_settings['local_logging']['enabled'] == True:
             local_chat_logger.log_message(
                 session_id=session_id,
@@ -382,7 +404,7 @@ def chat():
                 message=ai_response,
                 role='assistant'
             )
-        
+            
         response_data = {
             'response': ai_response,
             'timestamp': time.time(),
@@ -400,7 +422,7 @@ def chat():
                 'message_count': conversation['message_count']
             }
         }
-        
+            
         print("About to jsonify response...")
         response = jsonify(response_data)
         
@@ -409,7 +431,7 @@ def chat():
         
         print("About to return response...")
         return response
-        
+            
     except Exception as e:
         print(f"ERROR TYPE: {type(e).__name__}")
         print(f"ERROR MESSAGE: {str(e)}")
@@ -417,7 +439,8 @@ def chat():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
-   
+
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Comprehensive health check endpoint"""
