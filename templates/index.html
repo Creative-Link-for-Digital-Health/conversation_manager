@@ -422,7 +422,7 @@
                 this.isTyping = false;
                 this.isSidebarOpen = window.innerWidth > 768;
                 // Try to determine the correct API endpoint
-                this.apiEndpoint = `${window.location.protocol}//${window.location.hostname}:${window.location.port || 5500}/chat`;
+                this.apiEndpoint = `${window.location.protocol}//${window.location.hostname}/chat`;
                 
                 // Session tracking
                 this.sessionId = this.generateUUID();
